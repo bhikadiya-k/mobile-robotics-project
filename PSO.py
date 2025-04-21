@@ -4,9 +4,11 @@ import time
 
 
 def point_to_segment_distance(p, a, b):
+  
     ab = b - a
     if np.linalg.norm(ab) == 0:
         return np.linalg.norm(p - a)
+
     t = np.dot(p - a, ab) / np.dot(ab, ab)
     t = np.clip(t, 0, 1)
     projection = a + t * ab
@@ -19,12 +21,15 @@ def fitness_function(path, obstacles, start, goal, penalty_weight=100.0):
     penalty = 0.0
     for i in range(len(points) - 1):
         seg_length = np.linalg.norm(points[i+1] - points[i])
-        total_length += seg_length
+        total_length = seg_length + total_length
+
         for (center, radius) in obstacles:
             dist = point_to_segment_distance(center, points[i], points[i+1])
             safe_distance = radius + 0.5
             if dist < safe_distance:
-                penalty += (safe_distance - dist)
+
+                penalty = (safe_distance - dist) + penalty
+
     return total_length + penalty_weight * penalty
 
 def compute_path_length(path, start, goal):
@@ -37,8 +42,10 @@ def pso_path_planning(num_particles, num_waypoints, bounds, max_iter, w, c1, c2,
     dim = num_waypoints * 2
     positions = np.random.uniform(bounds[0], bounds[1], (num_particles, dim))
     velocities = np.random.uniform(-1, 1, (num_particles, dim))
+
     pbest_positions = positions.copy()
     pbest_fitness = np.array([fitness_function(pos, obstacles, start, goal) for pos in positions])
+
     gbest_index = np.argmin(pbest_fitness)
     gbest_position = pbest_positions[gbest_index].copy()
     gbest_fitness = pbest_fitness[gbest_index]
@@ -51,7 +58,7 @@ def pso_path_planning(num_particles, num_waypoints, bounds, max_iter, w, c1, c2,
             velocities[i] = (w * velocities[i] +
                              c1 * r1 * (pbest_positions[i] - positions[i]) +
                              c2 * r2 * (gbest_position - positions[i]))
-            positions[i] += velocities[i]
+            positions[i] = velocities[i] + positions[i]
             np.clip(positions[i], bounds[0], bounds[1], out=positions[i])
 
             current_fitness = fitness_function(positions[i], obstacles, start, goal)
@@ -72,10 +79,11 @@ def plot_pso_path(best_path, obstacles, start, goal, bounds):
     plt.plot(path_points[:, 0], path_points[:, 1], 'bo-', label='Planned Path')
     plt.plot(start[0], start[1], 'go', markersize=10, label='Start')
     plt.plot(goal[0], goal[1], 'ro', markersize=10, label='Goal')
+
     for (center, radius) in obstacles:
         plt.gca().add_patch(plt.Circle(center, radius, color='r', alpha=0.5))
         plt.gca().add_patch(plt.Circle(center, radius + 0.5, color='r', linestyle='--', fill=False))
-    plt.xlim(bounds[0]-1, bounds[1]+1)
+        
     plt.ylim(bounds[0]-1, bounds[1]+1)
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -119,12 +127,14 @@ if __name__ == "__main__":
     )
     t1 = time.time()
     runtime_ms = (t1 - t0) * 1000
-    
+
     path_length = compute_path_length(best_path, start, goal)
     avg_iter_time = runtime_ms / max_iter
 
     print(f"PSO Best Fitness:       {best_fitness:.3f}")
+
     print(f"Path Length:            {path_length:.3f} m")
+
     print(f"Total Runtime:          {runtime_ms:.2f} ms")
     print(f"Average Time/Iteration: {avg_iter_time:.2f} ms")
 
