@@ -4,9 +4,12 @@ import time
 
 
 def point_to_segment_distance(p, a, b):
+
     ab = b - a
+
     if np.linalg.norm(ab) == 0:
         return np.linalg.norm(p - a)
+    
     t = np.dot(p - a, ab) / np.dot(ab, ab)
     t = np.clip(t, 0, 1)
     projection = a + t * ab
@@ -19,17 +22,21 @@ def fitness_function(path, obstacles, start, goal, penalty_weight=100.0):
     penalty = 0.0
     for i in range(len(points) - 1):
         seg_length = np.linalg.norm(points[i+1] - points[i])
-        total_length += seg_length
+        total_length = seg_length + total_length
+
         for center, radius in obstacles:
             dist = point_to_segment_distance(center, points[i], points[i+1])
             safe_distance = radius + 0.5
             if dist < safe_distance:
-                penalty += (safe_distance - dist)
+                penalty = (safe_distance - dist) + penalty
+
     return total_length + penalty_weight * penalty
 
 def compute_path_length(path, start, goal):
     waypoints = path.reshape(-1, 2)
     points = [start] + list(waypoints) + [goal]
+
+
     return sum(np.linalg.norm(points[i+1] - points[i]) for i in range(len(points)-1))
 
 def compute_dynamic_inertia_weight(position, obstacles, w_max, w_min, d_threshold):
@@ -38,6 +45,7 @@ def compute_dynamic_inertia_weight(position, obstacles, w_max, w_min, d_threshol
         d = np.linalg.norm(position - center) - radius
         d_min = min(d_min, d)
     d_min = max(d_min, 0.0)
+
     if d_min >= d_threshold:
         return w_max
     return w_min + (w_max - w_min) * (d_min / d_threshold)
@@ -47,26 +55,34 @@ def ipso_path_planning(num_particles, num_waypoints, bounds, max_iter,
                        w_max, w_min, c1, c2, obstacles, start, goal, d_threshold):
     dim = num_waypoints * 2
     positions = np.random.uniform(bounds[0], bounds[1], (num_particles, dim))
+
     velocities = np.random.uniform(-1, 1, (num_particles, dim))
     pbest_positions = positions.copy()
+
     pbest_fitness = np.array([fitness_function(p, obstacles, start, goal) for p in positions])
     gbest_index = np.argmin(pbest_fitness)
+
     gbest_position = pbest_positions[gbest_index].copy()
+
     gbest_fitness = pbest_fitness[gbest_index]
+
     convergence_curve = []
 
     for _ in range(max_iter):
         for i in range(num_particles):
             waypoints = positions[i].reshape(-1, 2)
             ws = [compute_dynamic_inertia_weight(wp, obstacles, w_max, w_min, d_threshold) for wp in waypoints]
+
             w_dyn = np.mean(ws)
             r1 = np.random.rand(dim)
             r2 = np.random.rand(dim)
+
             velocities[i] = (w_dyn * velocities[i] +
                              c1 * r1 * (pbest_positions[i] - positions[i]) +
                              c2 * r2 * (gbest_position - positions[i]))
             
             positions[i] = np.clip(positions[i] + velocities[i], bounds[0], bounds[1])
+
             f = fitness_function(positions[i], obstacles, start, goal)
 
             if f < pbest_fitness[i]:
@@ -93,6 +109,8 @@ def plot_ipso_path(best_path, obstacles, start, goal, bounds):
     for center, radius in obstacles:
         plt.gca().add_patch(plt.Circle(center, radius, color='r', alpha=0.5))
         plt.gca().add_patch(plt.Circle(center, radius + 0.5, color='r', linestyle='--', fill=False))
+
+        
     plt.xlim(bounds[0] - 1, bounds[1] + 1)
     plt.ylim(bounds[0] - 1, bounds[1] + 1)
     plt.xlabel('X')
