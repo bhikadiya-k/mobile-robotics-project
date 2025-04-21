@@ -110,7 +110,7 @@ def plot_ipso_path(best_path, obstacles, start, goal, bounds):
         plt.gca().add_patch(plt.Circle(center, radius, color='r', alpha=0.5))
         plt.gca().add_patch(plt.Circle(center, radius + 0.5, color='r', linestyle='--', fill=False))
 
-        
+
     plt.xlim(bounds[0] - 1, bounds[1] + 1)
     plt.ylim(bounds[0] - 1, bounds[1] + 1)
     plt.xlabel('X')
@@ -161,8 +161,10 @@ if __name__ == "__main__":
     avg_iter_time = runtime_ms / max_iter
 
     print(f"IPSO Best Fitness:       {best_fitness:.3f}")
+
     print(f"Path Length:             {path_length:.3f} m")
     print(f"Total Runtime:           {runtime_ms:.2f} ms")
+    
     print(f"Average Time/Iteration:  {avg_iter_time:.2f} ms")
 
     plot_ipso_path(best_path, obstacles, start, goal, bounds)
